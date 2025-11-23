@@ -1,0 +1,157 @@
+version: '3.8'
+
+services:
+  # Serviço de Load Balancer (Nginx)
+  nginx:
+    build:
+      context: .
+      dockerfile: ./nginx/Dockerfile
+    container_name: nginx-loadbalancer
+    ports:
+      - "8080:80"
+    depends_on:
+      - php-app-1
+      - php-app-2
+      - php-app-3
+    networks:
+      - frontend
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Serviço PHP - Instância 1
+  php-app-1:
+    build:
+      context: .
+      dockerfile: ./php-app/Dockerfile
+      target: production
+    container_name: php-app-1
+    environment:
+      - DB_HOST=mysql-db
+      - DB_USER=root
+      - DB_PASSWORD=rootpassword
+      - DB_NAME=meubanco
+    depends_on:
+      mysql-db:
+        condition: service_healthy
+    networks:
+      - frontend
+      - backend
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Serviço PHP - Instância 2
+  php-app-2:
+    build:
+      context: .
+      dockerfile: ./php-app/Dockerfile
+      target: production
+    container_name: php-app-2
+    environment:
+      - DB_HOST=mysql-db
+      - DB_USER=root
+      - DB_PASSWORD=rootpassword
+      - DB_NAME=meubanco
+    depends_on:
+      mysql-db:
+        condition: service_healthy
+    networks:
+      - frontend
+      - backend
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Serviço PHP - Instância 3
+  php-app-3:
+    build:
+      context: .
+      dockerfile: ./php-app/Dockerfile
+      target: production
+    container_name: php-app-3
+    environment:
+      - DB_HOST=mysql-db
+      - DB_USER=root
+      - DB_PASSWORD=rootpassword
+      - DB_NAME=meubanco
+    depends_on:
+      mysql-db:
+        condition: service_healthy
+    networks:
+      - frontend
+      - backend
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Serviço MySQL
+  mysql-db:
+    build:
+      context: .
+      dockerfile: ./mysql/Dockerfile
+    container_name: mysql-db
+    environment:
+      - MYSQL_ROOT_PASSWORD=rootpassword
+      - MYSQL_DATABASE=meubanco
+      - MYSQL_USER=appuser
+      - MYSQL_PASSWORD=apppassword
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - backend
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpassword"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # Serviço PHPMyAdmin (Opcional - para gerenciamento do banco)
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: phpmyadmin
+    environment:
+      - PMA_HOST=mysql-db
+      - PMA_PORT=3306
+      - PMA_USER=root
+      - PMA_PASSWORD=rootpassword
+    ports:
+      - "8081:80"
+    depends_on:
+      - mysql-db
+    networks:
+      - backend
+    restart: unless-stopped
+
+networks:
+  frontend:
+    driver: bridge
+    name: frontend-network
+  backend:
+    driver: bridge
+    name: backend-network
+
+volumes:
+  mysql-data:
+    driver: local
+    name: mysql-data-volume
